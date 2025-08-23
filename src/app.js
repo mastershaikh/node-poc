@@ -3,6 +3,10 @@ const connectDb = require('./config/database');
 const User = require('./models/user');
 const { default: mongoose } = require('mongoose');
 
+const { validateSignUpData } = require('./utils/validation');
+
+const bcrypt = require('bcrypt');
+
 const app = express();
 
 app.use(express.json());
@@ -15,12 +19,18 @@ connectDb().then(() => {
 
 app.post('/signup', async (req, res) => {
      const userData = await req.body;
+    const { isValid, errors } = validateSignUpData(userData);
+    if (!isValid) {
+        return res.status(400).json({ errors });
+    }
+
+    const passwordHash = await bcrypt.hash(userData.password, 10);
     
     const userObj = {
         firstName: userData.firstName,
         lastName: userData.lastName,
         email: userData.email,
-        password: userData.password,
+        password: passwordHash,
         age: userData.age
     }
 
@@ -83,6 +93,24 @@ app.patch('/user', async (req, res) => {
             return res.status(400).send('Error updating user: ' + err.message);
         });
     }
+});
+
+
+app.use('/login', async (req, res) => {
+    const { email, password } = await req.body;
+    if (!email || !password) {
+        return res.status(400).send('Email and password are required');
+    }
+    const user = await User
+        .findOne({ email });
+    if (!user) {    
+        return res.status(404).send('Invalid credentials');
+    }   
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatch) {
+        return res.status(400).send('Invalid credentials');
+    }
+    return res.status(200).send('Login successful');
 });
 
 app.listen(7777, () => {
