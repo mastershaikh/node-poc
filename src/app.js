@@ -1,15 +1,21 @@
 const express = require('express');
 const connectDb = require('./config/database');
 const User = require('./models/user');
+const jwt = require('jsonwebtoken');
 const { default: mongoose } = require('mongoose');
 
 const { validateSignUpData } = require('./utils/validation');
+
+const cookieParser = require('cookie-parser');
+
+const userAuth = require('./middlewares/auth');
 
 const bcrypt = require('bcrypt');
 
 const app = express();
 
 app.use(express.json());
+app.use(cookieParser());
 
 connectDb().then(() => {
     console.log('Database connected');
@@ -42,7 +48,7 @@ app.post('/signup', async (req, res) => {
     });
 });
 
-app.get('/user', async (req, res) => {
+app.get('/user', userAuth, async (req, res) => {
     const emailId = req.query.email;
     if (emailId) {
         const user = await User.findOne({ email: emailId });
@@ -54,12 +60,12 @@ app.get('/user', async (req, res) => {
     }
 });
 
-app.get('/feed', async (req, res) => {
+app.get('/feed', userAuth, async (req, res) => {
     const user = await User.find();
     res.status(200).json(user);
 });
 
-app.delete('/user', async (req, res) => {
+app.delete('/user',userAuth, async (req, res) => {
     const emailId = req.query.email; 
     if (emailId) {
         await User.deleteOne({ email: emailId }).then((result) => {
@@ -74,7 +80,7 @@ app.delete('/user', async (req, res) => {
     }
 });
 
-app.patch('/user', async (req, res) => {
+app.patch('/user', userAuth, async (req, res) => {
     const emailId = req.body.email; 
     const updateData = await req.body;
 
@@ -96,7 +102,7 @@ app.patch('/user', async (req, res) => {
 });
 
 
-app.use('/login', async (req, res) => {
+app.post('/login', async (req, res) => {
     const { email, password } = await req.body;
     if (!email || !password) {
         return res.status(400).send('Email and password are required');
@@ -106,11 +112,23 @@ app.use('/login', async (req, res) => {
     if (!user) {    
         return res.status(404).send('Invalid credentials');
     }   
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    const isPasswordMatch = await user.verifyPassword(password);
     if (!isPasswordMatch) {
         return res.status(400).send('Invalid credentials');
     }
+    const token = await user.getJwt();
+    res.cookie('token', token);
     return res.status(200).send('Login successful');
+});
+
+app.get('/profile', userAuth, async (req, res) => {
+    
+    return res.status(200).send(req.user);
+});
+
+app.post('/connection-request', userAuth, async (req, res) => {
+    const user = req.user;
+    return res.status(200).send(user.firstName + ' Sent Connection request sent');
 });
 
 app.listen(7777, () => {
