@@ -23,6 +23,8 @@ userRouter.get('/users/connections', userAuth, async (req, res) => {
 
 userRouter.get('/users/feed', userAuth, async (req, res) => {
     const user = req.user;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
     const connections = await connection.find(
             { $or: [ { requesterId: user._id}, { recipientId: user._id} ], status: 'accepted' }
     );
@@ -33,7 +35,7 @@ userRouter.get('/users/feed', userAuth, async (req, res) => {
 
     const feedUsers = await User.find({ 
         _id: { $nin: [...connectedUserIds, user._id] } 
-    }).select('firstName lastName skills shortBio');
+    }).select('firstName lastName skills shortBio').skip((page - 1) * limit).limit(limit);
 
     res.status(200).json(feedUsers);
 });
