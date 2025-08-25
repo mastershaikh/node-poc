@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
 const userSchema = new mongoose.Schema({
-    firstName: {type: String, required: true, minLength: 3, maxLength: 30},
+    firstName: {type: String, required: true, minLength: 3, maxLength: 30, index: true},
     lastName: {type: String, required: true, minLength: 3, maxLength: 30},
     email: { 
         type: String, 
@@ -44,6 +44,23 @@ userSchema.methods.verifyPassword = async function(passwordInputByUser) {
 
     const isPasswordValid = await bcrypt.compare(passwordInputByUser, passwordHash);
     return isPasswordValid;
+}
+
+userSchema.methods.comparePassword = async function(oldPassword) {
+    const user = this;
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    return isMatch;
+}
+
+userSchema.methods.savePassword = async function(newPassword) {
+    const user = this;
+    const newHashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = newHashedPassword;
+    await user.save().then(() => {
+        return true;
+    }).catch(err => {
+        throw new Error('Error updating password: ' + err.message);
+    });
 }
 
 module.exports = mongoose.model('User', userSchema);

@@ -3,6 +3,8 @@ const profileRouter = express.Router();
 const User = require('../models/user');
 const userAuth = require('../middlewares/auth');
 
+const bcrypt = require('bcrypt');
+
 profileRouter.get('/profile', userAuth, async (req, res) => {
     const emailId = req.query.email;
     if (emailId) {
@@ -13,11 +15,6 @@ profileRouter.get('/profile', userAuth, async (req, res) => {
             return res.status(404).send('User not found');
         }
     }
-});
-
-profileRouter.get('/feed', userAuth, async (req, res) => {
-    const user = await User.find();
-    res.status(200).json(user);
 });
 
 profileRouter.delete('/profile',userAuth, async (req, res) => {
@@ -54,6 +51,24 @@ profileRouter.patch('/profile', userAuth, async (req, res) => {
         });
     } else {
         return res.status(400).send('Invalid updates! Allowed updates are: ' + ALLOWED_UPDATES);
+    }
+});
+
+profileRouter.patch('/profile/password', userAuth, async (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+        return res.status(400).send('Both old and new passwords are required');
+    }
+    const user = await User.findById(req.user._id);
+    if (!user) {
+        return res.status(404).send('User not found');
+    }
+    const isMatch = await user.comparePassword(oldPassword);
+    if (isMatch) {
+        await user.savePassword(newPassword);
+        return res.status(200).send('Password updated successfully');
+    } else {
+        return res.status(400).send('Old password is incorrect');
     }
 });
 
