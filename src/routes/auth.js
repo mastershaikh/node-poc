@@ -50,7 +50,7 @@ authRouter.post('/login', async (req, res) => {
     }
     const token = await user.getJwt();
     res.cookie('token', token);
-    return res.status(200).send('Login successful');
+    return res.status(200).send(user);
 });
 
 authRouter.post('/logout', async (req, res) => {

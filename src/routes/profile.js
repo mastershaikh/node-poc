@@ -6,14 +6,11 @@ const userAuth = require('../middlewares/auth');
 const bcrypt = require('bcrypt');
 
 profileRouter.get('/profile', userAuth, async (req, res) => {
-    const emailId = req.query.email;
-    if (emailId) {
-        const user = await User.findOne({ email: emailId });
-        if (user) {
-            return res.status(200).json(user);
-        } else {
-            return res.status(404).send('User not found');
-        }
+    const user = req.user;
+    if (user) {
+        return res.status(200).json(user);
+    } else {
+        return res.status(404).send('User not found');
     }
 });
 
@@ -35,7 +32,7 @@ profileRouter.delete('/profile',userAuth, async (req, res) => {
 profileRouter.patch('/profile', userAuth, async (req, res) => {
     const updateData = await req.body;
 
-    const ALLOWED_UPDATES = ['firstName', 'lastName', 'skills', 'shortBio', 'age', 'gender'];
+    const ALLOWED_UPDATES = ['firstName', 'lastName', 'skills', 'shortBio', 'age', 'gender','photoUrl'];
 
     const isValidOperation = Object.keys(updateData).every((update) => ALLOWED_UPDATES.includes(update));
 
